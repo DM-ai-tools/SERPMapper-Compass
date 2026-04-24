@@ -1,0 +1,48 @@
+{
+  "name": "serpmapper",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ./node_modules/next/dist/bin/next dev -p 3000",
+    "build": "node ./node_modules/next/dist/bin/next build",
+    "start": "node ./node_modules/next/dist/bin/next start",
+    "lint": "node ./node_modules/next/dist/bin/next lint",
+    "typecheck": "tsc --noEmit",
+    "verify-places": "node scripts/verify-google-places.mjs",
+    "smoke-analyze": "node scripts/smoke-analyze.mjs",
+    "smoke-analyze:multi": "node scripts/smoke-analyze-multi.mjs",
+    "db:setup": "node scripts/apply-postgres-schema.mjs",
+    "db:check": "node scripts/check-db.mjs",
+    "db:seed:suburbs": "node scripts/seed-all-australia.js",
+    "db:download:suburbs:abs": "node scripts/download-and-seed-abs-sal-2021.mjs",
+    "backfill:polygons": "node scripts/backfill-geojson-nominatim.mjs",
+    "backfill:population:abs": "node scripts/backfill-population-abs.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.36.3",
+    "@sendgrid/mail": "^8.1.3",
+    "dotenv": "^17.4.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "leaflet": "^1.9.4",
+    "next": "14.2.35",
+    "pg": "^8.20.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-leaflet": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.14",
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5"
+  }
+}
