@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import {
   SerpMapReport,
@@ -48,8 +48,6 @@ const TILE = {
 } as const;
 
 const PHONE_DISPLAY = "1300 852 340";
-const TR_EMAIL = "info@trafficradius.com.au";
-
 export interface ReportViewProps {
   report: SerpMapReport;
   results: SerpMapResult[];
@@ -157,12 +155,6 @@ export default function ReportView({
   const addressLine =
     report.business_address?.trim() || `${report.city} · service area map`;
 
-  const copyShare = useCallback(() => {
-    if (typeof window !== "undefined" && navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(window.location.href);
-    }
-  }, []);
-
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-6 sm:space-y-8">
       {/* ─── Report header (Compass) ─── */}
@@ -197,19 +189,9 @@ export default function ReportView({
         </p>
 
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
-          <ActionBtn icon="pdf" onClick={() => downloadReportPdf({ report, results: activeResults, cards: activeCards })}>
+          <ActionBtn onClick={() => downloadReportPdf({ report, results: activeResults, cards: activeCards })}>
             PDF
           </ActionBtn>
-          <ActionBtn icon="share" onClick={copyShare}>
-            Share
-          </ActionBtn>
-          <a
-            href={`mailto:${TR_EMAIL}?subject=${encodeURIComponent(`SERPMapper report — ${host}`)}`}
-            className="inline-flex min-h-[2.5rem] items-center justify-center gap-1.5 rounded-lg bg-tr-green-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-tr-green-600"
-          >
-            <MailIcon className="h-4 w-4" />
-            Email
-          </a>
           <LogoutButton />
         </div>
       </div>
@@ -497,45 +479,23 @@ function scorePillClass(s: number): string {
   return "bg-rose-100 text-rose-800 ring-1 ring-rose-200/80";
 }
 
-function ActionBtn({
-  children,
-  onClick,
-  icon,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  icon: "pdf" | "share";
-}) {
+function ActionBtn({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="inline-flex min-h-[2.5rem] items-center justify-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
     >
-      {icon === "pdf" ? <PdfIcon className="h-4 w-4 text-slate-500" /> : <LinkIcon className="h-4 w-4 text-slate-500" />}
+      <PdfIcon className="h-4 w-4 text-slate-500" />
       {children}
     </button>
   );
 }
 
-function MailIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  );
-}
 function PdfIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-    </svg>
-  );
-}
-function LinkIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 11-5.656-5.656l1.5-1.5m-1.5 4.242l1.5-1.5m-1.5-4.242L10.172 7.17a4 4 0 115.656 5.656l-3-3" />
     </svg>
   );
 }

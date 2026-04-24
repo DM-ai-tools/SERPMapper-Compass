@@ -78,28 +78,19 @@ export default function SiteHeader() {
                 className="hidden h-10 w-px shrink-0 bg-slate-200 sm:block"
                 aria-hidden
               />
-              <a href="/" className="min-w-0 group flex flex-col justify-center">
+              <a href="/" className="min-w-0 group flex items-center">
                 <span className="text-sm font-extrabold leading-tight text-tr-logo-navy md:text-base">
                   <span>SERP</span>
                   <span className="text-tr-green-600">Mapper</span>{" "}
                   <span>Compass</span>
-                </span>
-                <span className="text-[0.5rem] font-bold uppercase leading-tight tracking-wide text-[#94A3B8] md:text-[10px]">
-                  Version 2 · multi-keyword
                 </span>
               </a>
             </div>
 
             <nav className="hidden min-w-0 items-center justify-center text-sm text-slate-600 md:flex md:flex-1">
               <div className="flex flex-wrap items-center justify-end gap-0.5 md:mx-auto">
-                <a href="/#check" className="nav-link-underline rounded-lg px-2.5 py-2 lg:px-3">
-                  Overview
-                </a>
                 <a href="/#how-it-works" className="nav-link-underline rounded-lg px-2.5 py-2 lg:px-3">
                   How it works
-                </a>
-                <a href="/#scoring" className="nav-link-underline rounded-lg px-2.5 py-2 lg:px-3">
-                  Scoring
                 </a>
                 <a
                   href="https://trafficradius.com.au/seo/local-seo"

@@ -68,7 +68,7 @@ export default function RootLayout({
         <footer className="mt-auto border-t border-slate-200/90 bg-white/80 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center text-sm text-slate-500">
             <p>
-              SERPMapper is a free tool by{" "}
+              SERMapper Compass is a free tool by{" "}
               <a
                 href="https://trafficradius.com.au/"
                 className="font-medium text-brand-600 hover:text-brand-700 underline decoration-brand-200 underline-offset-4 hover:decoration-brand-400 transition-colors"
