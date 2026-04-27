@@ -81,31 +81,127 @@ export default function InputForm() {
   const [city, setCity] = useState("");
   const [radiusId, setRadiusId] = useState<RadiusBandId>(DEFAULT_RADIUS_ID);
   const [loading, setLoading] = useState(false);
+  const [splittingKeywords, setSplittingKeywords] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canAdd = keywords.length < MAX_KEYWORDS;
   const isAtKeywordLimit = keywords.length >= MAX_KEYWORDS;
 
-  const addKeyword = useCallback(
+  const addKeywordsFromRaw = useCallback(
     (raw: string) => {
-      const t = raw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)[0] ?? "";
-      if (!t) return;
+      const tokens = raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (!tokens.length) return;
+
       if (keywords.length >= MAX_KEYWORDS) {
         setError(KEYWORD_LIMIT_ERROR);
         return;
       }
-      if (keywords.some((k) => k.toLowerCase() === t.toLowerCase())) return;
-      setKeywords((k) => [...k, t]);
-      setError((prev) => (prev === KEYWORD_LIMIT_ERROR ? null : prev));
-      setDraft("");
+
+      const existingLower = new Set(keywords.map((k) => k.toLowerCase()));
+      const batchLower = new Set<string>();
+      const uniqueIncoming: string[] = [];
+
+      for (const t of tokens) {
+        const lower = t.toLowerCase();
+        if (existingLower.has(lower) || batchLower.has(lower)) continue;
+        batchLower.add(lower);
+        uniqueIncoming.push(t);
+      }
+
+      if (!uniqueIncoming.length) return;
+
+      const availableSlots = MAX_KEYWORDS - keywords.length;
+      const accepted = uniqueIncoming.slice(0, availableSlots);
+
+      if (accepted.length) {
+        setKeywords((prev) => [...prev, ...accepted]);
+        setError((prev) => (prev === KEYWORD_LIMIT_ERROR ? null : prev));
+      }
+
+      if (uniqueIncoming.length > availableSlots) {
+        setError(KEYWORD_LIMIT_ERROR);
+      }
     },
     [keywords]
   );
 
+  const splitKeywordsWithClaude = useCallback(
+    async (raw: string): Promise<string[]> => {
+      const cleaned = raw.trim();
+      if (!cleaned) return [];
+      const availableSlots = Math.max(0, MAX_KEYWORDS - keywords.length);
+      if (availableSlots <= 0) {
+        setError(KEYWORD_LIMIT_ERROR);
+        return [];
+      }
+      try {
+        setSplittingKeywords(true);
+        const res = await fetch("/api/keywords/split", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ raw: cleaned, max_keywords: availableSlots }),
+        });
+        if (!res.ok) {
+          return [cleaned];
+        }
+        const data = (await res.json()) as { keywords?: unknown };
+        const tokens = Array.isArray(data.keywords)
+          ? data.keywords.map((k) => String(k).trim()).filter(Boolean)
+          : [];
+        return tokens.length ? tokens : [cleaned];
+      } catch {
+        return [cleaned];
+      } finally {
+        setSplittingKeywords(false);
+      }
+    },
+    [keywords.length]
+  );
+
+  const hasLikelyMergedKeywords = useCallback((raw: string): boolean => {
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .some((segment) => segment.split(/\s+/).length >= 4);
+  }, []);
+
+  const commitDraftKeywords = useCallback(
+    async (raw: string) => {
+      const value = raw.trim();
+      if (!value) return;
+
+      if (value.includes(",")) {
+        if (hasLikelyMergedKeywords(value)) {
+          const splitTokens = await splitKeywordsWithClaude(value);
+          addKeywordsFromRaw(splitTokens.join(", "));
+        } else {
+          addKeywordsFromRaw(value);
+        }
+        setDraft("");
+        return;
+      }
+
+      const splitTokens = await splitKeywordsWithClaude(value);
+      addKeywordsFromRaw(splitTokens.join(", "));
+      setDraft("");
+    },
+    [addKeywordsFromRaw, hasLikelyMergedKeywords, splitKeywordsWithClaude]
+  );
+
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !draft.trim() && keywords.length > 0) {
+      e.preventDefault();
+      setKeywords((prev) => prev.slice(0, -1));
+      setError((prev) => (prev === KEYWORD_LIMIT_ERROR ? null : prev));
+      return;
+    }
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
-      addKeyword(draft || keywords[keywords.length - 1] || "");
+      void commitDraftKeywords(draft);
     }
   };
 
@@ -224,13 +320,37 @@ export default function InputForm() {
               className="min-w-[8rem] flex-1 border-0 bg-transparent py-1.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
               placeholder="Type a keyword, press Enter…"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.includes(",")) {
+                  void commitDraftKeywords(value);
+                  return;
+                }
+                setDraft(value);
+              }}
+              onBlur={() => {
+                if (!draft.trim()) return;
+                void commitDraftKeywords(draft);
+              }}
+              onPaste={(e) => {
+                const pasted = e.clipboardData.getData("text").trim();
+                if (!pasted) return;
+                const looksLikeKeywordBatch =
+                  pasted.includes(",") || pasted.split(/\s+/).length >= 4;
+                if (!looksLikeKeywordBatch) return;
+                e.preventDefault();
+                void commitDraftKeywords(pasted);
+              }}
               onKeyDown={onKeyDown}
-              disabled={!canAdd}
+              disabled={splittingKeywords}
             />
           </div>
           <p className={"mt-1.5 text-xs " + (isAtKeywordLimit ? "text-amber-600" : "text-slate-500")}>
-            {isAtKeywordLimit ? `Maximum ${MAX_KEYWORDS} keywords reached.` : "Press Enter or comma to add a keyword"}
+            {isAtKeywordLimit
+              ? `Maximum ${MAX_KEYWORDS} keywords reached.`
+              : splittingKeywords
+                ? "Separating keywords..."
+                : "Press Enter or comma to add a keyword"}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-slate-500">Example:</span>

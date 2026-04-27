@@ -17,6 +17,11 @@ export interface KeywordResolution {
   source: "llm" | "fallback";
 }
 
+export interface KeywordSplitResult {
+  keywords: string[];
+  source: "llm" | "fallback";
+}
+
 function fallbackResolution(trimmed: string): KeywordResolution {
   const mapsQuery = trimmed.replace(/\s+/g, " ").trim();
   return {
@@ -24,6 +29,26 @@ function fallbackResolution(trimmed: string): KeywordResolution {
     volumeKey: slugifyKeywordForVolume(mapsQuery),
     source: "fallback",
   };
+}
+
+function normaliseKeywordList(
+  raw: string,
+  maxKeywords: number
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const tokens = raw
+    .split(/[,\n;]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const t of tokens) {
+    const low = t.toLowerCase();
+    if (seen.has(low)) continue;
+    seen.add(low);
+    out.push(t);
+    if (out.length >= maxKeywords) break;
+  }
+  return out;
 }
 
 /**
@@ -89,5 +114,70 @@ Rules for maps_query:
   } catch (e) {
     console.warn("[keyword-intelligence] LLM resolution failed, using fallback:", e);
     return fallbackResolution(trimmed);
+  }
+}
+
+/**
+ * Split free-form service keyword text into a list of service keywords.
+ * Uses Claude Haiku when available; otherwise falls back to basic separators.
+ */
+export async function splitServiceKeywords(
+  rawKeywordText: string,
+  maxKeywords = 10
+): Promise<KeywordSplitResult> {
+  const trimmed = rawKeywordText.trim();
+  const safeMax = Math.max(1, Math.min(10, Math.floor(maxKeywords)));
+  if (!trimmed) {
+    return { keywords: [], source: "fallback" };
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { keywords: normaliseKeywordList(trimmed, safeMax), source: "fallback" };
+  }
+
+  try {
+    const client = getClient();
+    const prompt = `The user typed this into a local business "service keywords" field:
+
+"${trimmed}"
+
+Return ONE JSON object only, no markdown:
+{"keywords":["<k1>","<k2>"]}
+
+Rules:
+- Split the input into distinct service keywords in the same language as user input.
+- Infer separators if missing (e.g. "emergency plumber roof plumber leak detection" -> ["emergency plumber","roof plumber","leak detection"]).
+- Keep phrases concise and useful for Google Maps search intent.
+- Preserve intended order.
+- Remove duplicates (case-insensitive).
+- Return at most ${safeMax} keywords.
+- Never return empty strings.`;
+
+    const message = await client.messages.create({
+      model: MODEL,
+      max_tokens: 240,
+      temperature: 0,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = message.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    const match = text.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(match?.[0] ?? "{}") as { keywords?: unknown };
+    const rawKeywords = Array.isArray(parsed.keywords) ? parsed.keywords : [];
+    const cleaned = normaliseKeywordList(
+      rawKeywords.map((k) => (typeof k === "string" ? k : "")).join(","),
+      safeMax
+    );
+    if (!cleaned.length) {
+      return { keywords: normaliseKeywordList(trimmed, safeMax), source: "fallback" };
+    }
+    return { keywords: cleaned, source: "llm" };
+  } catch (e) {
+    console.warn("[keyword-intelligence] LLM keyword split failed, using fallback:", e);
+    return { keywords: normaliseKeywordList(trimmed, safeMax), source: "fallback" };
   }
 }
