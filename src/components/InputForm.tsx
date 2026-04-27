@@ -8,7 +8,7 @@ import { CTA_GET_REPORT } from "@/lib/lead-cta";
 
 const MAX_KEYWORDS = 10;
 
-const TRY_SUGGESTIONS = [
+const KEYWORD_EXAMPLES = [
   "emergency plumber",
   "roof plumber",
   "leak detection",
@@ -222,20 +222,14 @@ export default function InputForm() {
           </div>
           <p className="mt-1.5 text-xs text-slate-500">Press Enter or comma to add a keyword</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-slate-500">Try:</span>
-            {TRY_SUGGESTIONS.map((s) => (
-              <button
+            <span className="text-slate-500">Example:</span>
+            {KEYWORD_EXAMPLES.map((s) => (
+              <span
                 key={s}
-                type="button"
-                className="rounded-full border border-tr-green-200 bg-white px-2.5 py-0.5 font-medium text-tr-green-700 transition hover:border-tr-green-400 hover:bg-tr-green-50"
-                onClick={() => {
-                  if (keywords.length >= MAX_KEYWORDS) return;
-                  if (keywords.some((k) => k.toLowerCase() === s)) return;
-                  setKeywords((prev) => [...prev, s]);
-                }}
+                className="rounded-full border border-tr-green-200 bg-white px-2.5 py-0.5 font-medium text-tr-green-700"
               >
-                + {s}
-              </button>
+                {s}
+              </span>
             ))}
           </div>
         </div>
