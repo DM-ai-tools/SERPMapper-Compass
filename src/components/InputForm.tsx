@@ -7,6 +7,7 @@ import { RADIUS_OPTIONS, type RadiusBandId, DEFAULT_RADIUS_ID } from "@/lib/radi
 import { CTA_GET_REPORT } from "@/lib/lead-cta";
 
 const MAX_KEYWORDS = 10;
+const KEYWORD_LIMIT_ERROR = `You can add up to ${MAX_KEYWORDS} service keywords.`;
 
 const KEYWORD_EXAMPLES = [
   "emergency plumber",
@@ -83,14 +84,19 @@ export default function InputForm() {
   const [error, setError] = useState<string | null>(null);
 
   const canAdd = keywords.length < MAX_KEYWORDS;
+  const isAtKeywordLimit = keywords.length >= MAX_KEYWORDS;
 
   const addKeyword = useCallback(
     (raw: string) => {
       const t = raw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)[0] ?? "";
       if (!t) return;
-      if (keywords.length >= MAX_KEYWORDS) return;
+      if (keywords.length >= MAX_KEYWORDS) {
+        setError(KEYWORD_LIMIT_ERROR);
+        return;
+      }
       if (keywords.some((k) => k.toLowerCase() === t.toLowerCase())) return;
       setKeywords((k) => [...k, t]);
+      setError((prev) => (prev === KEYWORD_LIMIT_ERROR ? null : prev));
       setDraft("");
     },
     [keywords]
@@ -125,7 +131,7 @@ export default function InputForm() {
       return;
     }
     if (finalKw.length > MAX_KEYWORDS) {
-      setError(`Maximum ${MAX_KEYWORDS} keywords.`);
+      setError(KEYWORD_LIMIT_ERROR);
       return;
     }
 
@@ -204,7 +210,10 @@ export default function InputForm() {
                 <button
                   type="button"
                   className="ml-0.5 rounded p-0.5 text-tr-green-700 hover:bg-tr-green-200"
-                  onClick={() => setKeywords((prev) => prev.filter((x) => x !== k))}
+                  onClick={() => {
+                    setKeywords((prev) => prev.filter((x) => x !== k));
+                    setError((prev) => (prev === KEYWORD_LIMIT_ERROR ? null : prev));
+                  }}
                   aria-label={`Remove ${k}`}
                 >
                   ×
@@ -220,7 +229,9 @@ export default function InputForm() {
               disabled={!canAdd}
             />
           </div>
-          <p className="mt-1.5 text-xs text-slate-500">Press Enter or comma to add a keyword</p>
+          <p className={"mt-1.5 text-xs " + (isAtKeywordLimit ? "text-amber-600" : "text-slate-500")}>
+            {isAtKeywordLimit ? `Maximum ${MAX_KEYWORDS} keywords reached.` : "Press Enter or comma to add a keyword"}
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-slate-500">Example:</span>
             {KEYWORD_EXAMPLES.map((s) => (
