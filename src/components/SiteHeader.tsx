@@ -40,6 +40,10 @@ function FreeAuditButton() {
 }
 
 export default function SiteHeader() {
+  return <SiteHeaderInner hideLogout={false} />;
+}
+
+export function SiteHeaderInner({ hideLogout }: { hideLogout: boolean }) {
   return (
     <header className="sticky top-0 z-50">
       <div className="bg-[#001c2e] py-1.5 text-xs text-slate-100 sm:py-2 sm:text-sm">
@@ -97,7 +101,7 @@ export default function SiteHeader() {
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <PhoneCircle />
-              <LogoutButton />
+              {!hideLogout ? <LogoutButton /> : null}
               <FreeAuditButton />
             </div>
           </div>

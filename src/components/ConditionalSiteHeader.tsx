@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import SiteHeader from "@/components/SiteHeader";
+import SiteHeader, { SiteHeaderInner } from "@/components/SiteHeader";
 
 /**
  * Hides the global marketing header on full-screen Compass report views so the
@@ -11,6 +11,9 @@ export default function ConditionalSiteHeader() {
   const pathname = usePathname();
   if (pathname === "/tool" || (pathname && pathname.startsWith("/report/"))) {
     return null;
+  }
+  if (pathname === "/signup") {
+    return <SiteHeaderInner hideLogout={true} />;
   }
   return <SiteHeader />;
 }
