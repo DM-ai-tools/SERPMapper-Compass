@@ -12,7 +12,7 @@ export default function ConditionalSiteHeader() {
   if (pathname === "/tool" || (pathname && pathname.startsWith("/report/"))) {
     return null;
   }
-  if (pathname === "/signup") {
+  if (pathname === "/signup" || (pathname && pathname.startsWith("/admin"))) {
     return <SiteHeaderInner hideLogout={true} />;
   }
   return <SiteHeader />;
