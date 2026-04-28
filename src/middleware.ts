@@ -25,11 +25,6 @@ export function middleware(req: NextRequest) {
   if (pathname.startsWith("/admin")) {
     const hasAdminSession = req.cookies.get(ADMIN_AUTH_COOKIE)?.value === "1";
     if (pathname === "/admin/login") {
-      if (hasAdminSession) {
-        const url = req.nextUrl.clone();
-        url.pathname = "/admin";
-        return NextResponse.redirect(url);
-      }
       return NextResponse.next();
     }
     if (!hasAdminSession) {
