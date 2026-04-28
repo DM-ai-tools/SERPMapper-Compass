@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const ADMIN_AUTH_COOKIE = "serp_admin_auth";
+const USER_AUTH_COOKIE = "serp_auth";
 
 export async function POST(req: NextRequest) {
   const res = new NextResponse(null, {
@@ -8,6 +9,13 @@ export async function POST(req: NextRequest) {
     headers: { Location: "/login" },
   });
   res.cookies.set(ADMIN_AUTH_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
+  res.cookies.set(USER_AUTH_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
