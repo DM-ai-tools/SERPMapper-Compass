@@ -88,6 +88,12 @@ export default function RootLayout({
               <a href="/terms" className="hover:text-slate-700 transition-colors">
                 Terms
               </a>
+              <span className="text-slate-300" aria-hidden>
+                ·
+              </span>
+              <a href="/admin/login" className="hover:text-slate-700 transition-colors">
+                Admin
+              </a>
             </p>
           </div>
         </footer>

@@ -1,4 +1,4 @@
-import { execute, query } from "./db";
+import { query } from "./db";
 import { SuburbCoordinate } from "./types";
 import {
   getKeywordVolumes,
@@ -76,8 +76,8 @@ export function getSuburbVolume(suburb: SuburbCoordinate, keyword: string): numb
 
 /**
  * Fetch live monthly volumes for "<keyword> <suburb>" phrases.
- * Uses 30-day DB cache first; missing entries are fetched via DataforSEO Keywords Data API.
- * Falls back to existing suburb static volume when live fetch/cache is unavailable.
+ * Uses DataforSEO live requests (no DB caching) and falls back to static suburb
+ * volume when live lookup is unavailable.
  */
 export async function fetchLiveSuburbVolumes(
   suburbs: Array<Pick<SuburbCoordinate, "suburb_id" | "name" | "dataforseo_location_name">>,
@@ -102,81 +102,24 @@ export async function fetchLiveSuburbVolumes(
     for (const phrase of uniquePhrases) allPhrases.add(phrase);
   }
   const phrases = Array.from(allPhrases);
-  const nowIso = new Date().toISOString();
+  const liveVolumeMap = new Map<string, number>();
 
-  // Ensure cache table exists (safe no-op when already present).
-  try {
-    await execute(`
-      CREATE TABLE IF NOT EXISTS keyword_volume_cache (
-        keyword TEXT PRIMARY KEY,
-        monthly_volume INTEGER NOT NULL DEFAULT 0,
-        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        expires_at TIMESTAMPTZ NOT NULL
-      )
-    `);
-    await execute(`
-      CREATE INDEX IF NOT EXISTS idx_kvc_expires
-        ON keyword_volume_cache(expires_at)
-    `);
-  } catch (e) {
-    console.warn("[suburbs] keyword volume cache bootstrap failed:", e);
-  }
-
-  // 1) Read non-expired cache entries.
-  let cached: Array<{ keyword: string; monthly_volume: number }> = [];
-  try {
-    cached = await query<{ keyword: string; monthly_volume: number }>(
-      `SELECT keyword, monthly_volume
-       FROM keyword_volume_cache
-       WHERE keyword = ANY($1::text[]) AND expires_at > $2`,
-      [phrases, nowIso]
-    );
-  } catch (e) {
-    // Cache table might not exist yet in some environments.
-    console.warn("[suburbs] keyword volume cache query failed:", e);
-  }
-
-  // Treat 0/invalid cached values as non-authoritative to avoid "stuck at zero" volumes.
-  const cacheMap = new Map<string, number>();
-  for (const row of cached) {
-    const key = normaliseVolumeKeyword(row.keyword);
-    const vol = Number(row.monthly_volume);
-    if (!key || !Number.isFinite(vol) || vol <= 0) continue;
-    cacheMap.set(key, Math.round(vol));
-  }
-  const missing = phrases.filter((p) => !cacheMap.has(p));
-
-  // 2) Fetch missing phrases live from DataforSEO.
-  if (missing.length > 0) {
+  // 1) Fetch phrases live from DataforSEO.
+  if (phrases.length > 0) {
     try {
-      const liveMap = await getKeywordVolumes(missing);
-      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      for (const kw of missing) {
+      const liveMap = await getKeywordVolumes(phrases);
+      for (const kw of phrases) {
         const liveVolRaw = liveMap.get(normaliseVolumeKeyword(kw));
         const liveVol = Number.isFinite(liveVolRaw) ? Math.max(0, Math.round(liveVolRaw as number)) : undefined;
         if (liveVol === undefined || liveVol <= 0) continue; // Keep fallback path for zero/no-data.
-
-        cacheMap.set(kw, liveVol);
-        try {
-          await execute(
-            `INSERT INTO keyword_volume_cache (keyword, monthly_volume, fetched_at, expires_at)
-             VALUES ($1, $2, NOW(), $3)
-             ON CONFLICT (keyword) DO UPDATE
-               SET monthly_volume = EXCLUDED.monthly_volume,
-                   fetched_at     = NOW(),
-                   expires_at     = EXCLUDED.expires_at`,
-            [kw, liveVol, expiresAt]
-          );
-        } catch (e) {
-          console.warn("[suburbs] cache upsert failed for keyword:", kw, e);
-        }
+        liveVolumeMap.set(kw, liveVol);
       }
     } catch (e) {
       console.warn("[suburbs] live keyword volumes failed, using fallback:", e);
     }
   }
 
-  // 3) Build Map<suburb_id, volume> with static fallback if needed.
+  // 2) Build Map<suburb_id, volume> with static fallback if needed.
   const fallbackBySuburb = new Map<string, number>();
   if (fallbackRows?.length) {
     for (const row of fallbackRows) {
@@ -194,7 +137,7 @@ export async function fetchLiveSuburbVolumes(
       continue;
     }
     const bestLiveVol = phrasesForSuburb.reduce((best, phrase) => {
-      const vol = cacheMap.get(phrase);
+      const vol = liveVolumeMap.get(phrase);
       if (!Number.isFinite(vol) || (vol as number) <= 0) return best;
       return Math.max(best, vol as number);
     }, 0);
@@ -206,7 +149,7 @@ export async function fetchLiveSuburbVolumes(
     );
   }
 
-  // 4) For remaining zero values, query DataforSEO with suburb location context.
+  // 3) For remaining zero values, query DataforSEO with suburb location context.
   const zeroSuburbs = suburbs.filter((s) => (result.get(s.suburb_id) ?? 0) <= 0);
   if (zeroSuburbs.length > 0) {
     const lookupTasks = zeroSuburbs.flatMap((s) => {
@@ -236,7 +179,7 @@ export async function fetchLiveSuburbVolumes(
     }
   }
 
-  // 5) If live/fallback is too sparse (e.g. only city term has volume), infer
+  // 4) If live/fallback is too sparse (e.g. only city term has volume), infer
   //    non-zero suburb volumes from base keyword demand so ranked suburbs don't
   //    look impossible (position with 0/mo).
   const resolved = Array.from(result.values());

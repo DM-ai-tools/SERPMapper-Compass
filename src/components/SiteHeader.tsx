@@ -92,14 +92,6 @@ export default function SiteHeader() {
                 <a href="/#how-it-works" className="nav-link-underline rounded-lg px-2.5 py-2 lg:px-3">
                   How it works
                 </a>
-                <a
-                  href="https://trafficradius.com.au/seo/local-seo"
-                  className="nav-link-underline rounded-lg px-2.5 py-2 lg:px-3"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Blog
-                </a>
               </div>
             </nav>
 

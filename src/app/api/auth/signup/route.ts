@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureDatabaseReady } from "@/lib/db";
 import {
+  createAuthUser,
   ensureAuthUsersTable,
-  findAuthUserByEmail,
   normaliseEmail,
-  verifyPassword,
 } from "@/lib/auth-users";
 
 const AUTH_COOKIE = "serp_auth";
@@ -14,28 +13,40 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as {
       email?: string;
       password?: string;
+      confirmPassword?: string;
     };
 
     const email = normaliseEmail(body.email ?? "");
     const password = body.password ?? "";
+    const confirmPassword = body.confirmPassword ?? "";
 
-    if (!email || !password) {
+    if (!email || !password || !confirmPassword) {
       return NextResponse.json(
-        { error: "Email and password are required." },
+        { error: "Email, password, and confirm password are required." },
+        { status: 400 }
+      );
+    }
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters." },
+        { status: 400 }
+      );
+    }
+    if (password !== confirmPassword) {
+      return NextResponse.json(
+        { error: "Password and confirm password do not match." },
         { status: 400 }
       );
     }
 
     await ensureDatabaseReady();
     await ensureAuthUsersTable();
-    const user = await findAuthUserByEmail(email);
-    const passwordMatch = user
-      ? await verifyPassword(password, user.password_hash)
-      : false;
-    if (!user || !passwordMatch) {
+
+    const created = await createAuthUser(email, password);
+    if (created === "exists") {
       return NextResponse.json(
-        { error: "Invalid email or password." },
-        { status: 401 }
+        { error: "User already exists." },
+        { status: 409 }
       );
     }
 

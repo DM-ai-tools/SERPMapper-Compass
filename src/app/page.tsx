@@ -28,7 +28,7 @@ export default function HomePage() {
                 ["10", "Keywords / scan max"],
                 ["~50", "Suburbs in radius"],
                 ["60s", "Typical time"],
-                ["7-day", "Volume cache"],
+                ["Live", "Report"],
               ].map(([n, l]) => (
                 <li key={l} className="text-center sm:text-left">
                   <div className="text-2xl font-black text-slate-900">{n}</div>
@@ -56,7 +56,7 @@ export default function HomePage() {
             <div
               key={s.t}
               className={
-                "rounded-2xl border bg-white p-7 text-left shadow-sm " +
+                "rounded-2xl border bg-white p-7 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_rgba(139,207,74,0.35),0_18px_40px_-20px_rgba(139,207,74,0.55)] hover:ring-1 hover:ring-tr-green-300/80 " +
                 (i === 1
                   ? "border-tr-green-200 ring-1 ring-tr-green-100/80"
                   : "border-slate-200/90")
