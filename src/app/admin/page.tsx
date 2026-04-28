@@ -1,6 +1,8 @@
 import { query } from "@/lib/db";
 import AdminSearchDashboard from "@/components/AdminSearchDashboard";
 
+export const dynamic = "force-dynamic";
+
 interface AdminSearchRow {
   report_id: string;
   created_at: string;
